@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Resize Pro - Free Online Tool</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:#f3f6fc;
+ color:#172554;
+}
+header{
+ background:#1746d1;
+ color:white;
+ text-align:center;
+ padding:25px 10px;
+}
+header h1{margin:0;font-size:27px}
+header p{margin:9px 0 0}
+.container{
+ max-width:650px;
+ margin:25px auto;
+ padding:20px;
+}
+.card{
+ background:white;
+ padding:22px;
+ border-radius:15px;
+ box-shadow:0 4px 18px #0001;
+}
+h2{text-align:center}
+.upload{
+ border:2px dashed #4169e1;
+ padding:30px 10px;
+ text-align:center;
+ border-radius:12px;
+ cursor:pointer;
+ background:#f5f8ff;
+}
+input,select,button{
+ width:100%;
+ padding:13px;
+ margin:9px 0;
+ border:1px solid #ccd5e5;
+ border-radius:8px;
+ font-size:16px;
+}
+button{
+ background:#1746d1;
+ color:white;
+ border:0;
+ font-weight:bold;
+ cursor:pointer;
+}
+button:hover{background:#1035a5}
+.options{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:8px;
+}
+.options button{
+ background:#e8efff;
+ color:#1746d1;
+ border:1px solid #1746d1;
+}
+.options button.active{
+ background:#1746d1;
+ color:white;
+}
+.preview{
+ text-align:center;
+ margin-top:20px;
+}
+.preview img{
+ max-width:100%;
+ max-height:300px;
+ border-radius:10px;
+}
+#result{display:none}
+.download{background:#168a46}
+.note{
+ color:#64748b;
+ font-size:13px;
+ text-align:center;
+}
+footer{
+ text-align:center;
+ padding:20px;
+ color:#64748b;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>Image Resize Pro</h1>
+<p>Free Online Image Resizer & Compressor</p>
+</header>
+
+<div class="container">
+<div class="card">
+
+<h2>Resize Your Image</h2>
+
+<label class="upload" for="file">
+📷<br><br>
+<strong>Choose Your Image</strong>
+<br>
+JPG, PNG, WEBP Supported
+</label>
+
+<input type="file" id="file" accept="image/*" hidden>
+
+<div id="preview" class="preview"></div>
+
+<h3>Select Target Size</h3>
+
+<div class="options">
+<button onclick="setSize(20,this)">20 KB</button>
+<button onclick="setSize(50,this)">50 KB</button>
+<button onclick="setSize(100,this)">100 KB</button>
+<button onclick="setSize(200,this)">200 KB</button>
+<button onclick="setSize(500,this)">500 KB</button>
+<button onclick="setSize(1024,this)">1 MB</button>
+</div>
+
+<h3>Custom Size (KB)</h3>
+<input type="number" id="custom" placeholder="Enter size in KB">
+
+<h3>Image Dimensions</h3>
+<input type="number" id="width" placeholder="Width in pixels">
+<input type="number" id="height" placeholder="Height in pixels">
+
+<h3>Output Format</h3>
+<select id="format">
+<option value="image/jpeg">JPG</option>
+<option value="image/png">PNG</option>
+<option value="image/webp">WEBP</option>
+</select>
+
+<button onclick="resizeImage()">Resize Image Now</button>
+
+<p class="note">Your images are processed in your browser.</p>
+
+<div id="result" class="preview">
+<h3>Resized Image</h3>
+<img id="output">
+<p id="info"></p>
+<button class="download" onclick="downloadImage()">⬇ Download Image</button>
+</div>
+
+</div>
+</div>
+
+<footer>
+© 2026 Image Resize Pro | Free Online Tool
+</footer>
+
+<script>
+let image = new Image();
+let selectedSize = 0;
+let resultBlob = null;
+
+function setSize(size,btn){
+ selectedSize=size;
+ document.querySelectorAll('.options button')
+ .forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+ document.getElementById('custom').value='';
+}
+
+document.getElementById('file').addEventListener('change',function(e){
+ const file=e.target.files[0];
+ if(!file)return;
+
+ if(!file.type.startsWith('image/')){
+ alert('Please select an image');
+ return;
+ }
+
+ const url=URL.createObjectURL(file);
+ image.onload=function(){
+ document.getElementById('preview').innerHTML=
+ '<img src="'+url+'"><p>'+file.name+
+ ' ('+(file.size/1024).toFixed(1)+' KB)</p>';
+
+ document.getElementById('width').value=image.width;
+ document.getElementById('height').value=image.height;
+ };
+ image.src=url;
+});
+
+async function resizeImage(){
+
+ if(!image.src){
+ alert('Please upload an image first');
+ return;
+ }
+
+ const custom=parseFloat(document.getElementById('custom').value);
+ const target=custom>0?custom:selectedSize;
+
+ if(!target){
+ alert('Please select a target size');
+ return;
+ }
+
+ let w=parseInt(document.getElementById('width').value)||image.width;
+ let h=parseInt(document.getElementById('height').value)||image.height;
+
+ if(w<1||h<1||w>10000||h>10000){
+ alert('Please enter valid dimensions (1-10000)');
+ return;
+ }
+
+ const canvas=document.createElement('canvas');
+ canvas.width=w;
+ canvas.height=h;
+
+ const ctx=canvas.getContext('2d');
+ ctx.fillStyle='#ffffff';
+ ctx.fillRect(0,0,w,h);
+ ctx.drawImage(image,0,0,w,h);
+
+ const format=document.getElementById('format').value;
+
+ if(format==='image/png'){
+ canvas.toBlob(blob=>{
+ if(!blob)return;
+ showResult(blob);
+ },format);
+ return;
+ }
+
+ let quality=0.92;
+ let blob=null;
+ const maxBytes=target*1024;
+
+ for(let i=0;i<30;i++){
+ blob=await new Promise(resolve=>
+ canvas.toBlob(resolve,format,quality));
+
+ if(!blob)break;
+ if(blob.size<=maxBytes)break;
+ quality-=0.035;
+ if(quality<0.05)break;
+ }
+
+ if(!blob){
+ alert('Image processing failed');
+ return;
+ }
+
+ if(blob.size>maxBytes){
+ alert('Target size is too small for these dimensions. Try smaller dimensions or a larger KB target.');
+ return;
+ }
+
+ showResult(blob);
+}
+
+function showResult(blob){
+ resultBlob=blob;
+ document.getElementById('output').src=
+ URL.createObjectURL(blob);
+
+ document.getElementById('info').innerText=
+ 'Final Size: '+(blob.size/1024).toFixed(2)+' KB';
+
+ document.getElementById('result').style.display='block';
+}
+
+function downloadImage(){
+ if(!resultBlob)return;
+
+ const format=document.getElementById('format').value;
+ const ext=format==='image/jpeg'?'jpg':
+ format==='image/png'?'png':'webp';
+
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(resultBlob);
+ a.download='resized-image.'+ext;
+ a.click();
+}
+</script>
+
+</body>
+  </html>
